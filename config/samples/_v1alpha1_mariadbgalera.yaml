@@ -1,0 +1,6 @@
+apiVersion: ljavorsk-mariadb-operator.com/v1alpha1
+kind: MariadbGalera
+metadata:
+  name: mariadbgalera-sample
+spec:
+  # TODO(user): Add fields here

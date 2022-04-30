@@ -5,4 +5,11 @@ plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: mariadb-galera-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: ljavorsk-mariadb-operator.com
+  kind: MariadbGalera
+  version: v1alpha1
 version: "3"

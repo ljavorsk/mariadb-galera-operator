@@ -1,0 +1,24 @@
+# permissions for end users to edit mariadbgaleras.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mariadbgalera-editor-role
+rules:
+- apiGroups:
+  - ljavorsk-mariadb-operator.com
+  resources:
+  - mariadbgaleras
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ljavorsk-mariadb-operator.com
+  resources:
+  - mariadbgaleras/status
+  verbs:
+  - get
