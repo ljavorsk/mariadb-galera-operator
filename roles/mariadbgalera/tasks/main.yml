@@ -1,2 +1,41 @@
 ---
 # tasks file for MariadbGalera
+
+- name: start mariadbgalera
+  kubernetes.core.k8s:
+    definition:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-mariadbgalera'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+      spec:
+        replicas: "{{size}}"
+        selector:
+          matchLabels:
+            app: mariadbgalera
+        template:
+          metadata:
+            labels:
+              app: mariadbgalera
+          spec:
+            containers:
+            - env:
+              - name: GALERA_INIT
+              - name: MYSQL_DATABASE
+                value: db
+              - name: MYSQL_PASSWORD
+                value: pass
+              - name: MYSQL_USER
+                value: user
+              name: mariadbgalera
+              image: "quay.io/ljavorsk/mariadb-galera-init"
+              ports:
+                - containerPort: 3306
+                  protocol: TCP
+                - containerPort: 4444
+                  protocol: TCP
+                - containerPort: 4567
+                  protocol: TCP
+                - containerPort: 4568
+                  protocol: TCP
