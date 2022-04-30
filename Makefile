@@ -49,6 +49,10 @@ endif
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
 
+# Switch between podman and docker
+DOCKER ?= podman
+#DOCKER ?= docker
+
 .PHONY: all
 all: docker-build
 
@@ -77,11 +81,11 @@ run: ansible-operator ## Run against the configured Kubernetes cluster in ~/.kub
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	$(DOCKER) build -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
+	$(DOCKER) push ${IMG}
 
 ##@ Deployment
 
@@ -146,7 +150,7 @@ bundle: kustomize ## Generate bundle manifests and metadata, then validate gener
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	$(DOCKER) build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
