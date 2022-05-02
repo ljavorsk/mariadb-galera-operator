@@ -1,7 +1,6 @@
 ---
 # tasks file for MariadbGalera
 
-
 - name: create mariadb initial pod
   kubernetes.core.k8s:
     state: present
@@ -11,7 +10,7 @@
       apiVersion: v1
       kind: Pod
       spec:
-        selector:
+        label:
           app: mariadbgalera
         containers:
         - env:
@@ -40,33 +39,42 @@
       status: "True"
 #  register: testregister
 
-#- debug:
+- debug:
+    var: ansible_operator_meta
 #    var: testregister
-
 - name: Create a Service object for MariadbGalera Pod
-  kubernetes.core.k8s_service:
+  kubernetes.core.k8s:
     state: present
-    name: '{{ ansible_operator_meta.name }}-service'
-    namespace: '{{ ansible_operator_meta.namespace }}'
-    ports:
-    - name: mariadb-database
-      protocol: TCP
-      port: 3306
-      targetPort: 3306
-    - name: mariadb-galera1
-      protocol: TCP
-      port: 4444
-      targetPort: 4444
-    - name: mariadb-galera2
-      protocol: TCP
-      port: 4567
-      targetPort: 4567
-    - name: mariadb-galera3
-      protocol: TCP
-      port: 4568
-      targetPort: 4568
-    selector:
-      app: mariadbgalera
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-service'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+        labels:
+          app: mariadbgalera
+          service: mariadbgalera-service
+      spec:
+        selector:
+          app: mariadbgalera
+          service: mariadbgalera-service
+        ports:
+        - name: mariadb-database
+          protocol: TCP
+          port: 3306
+          targetPort: 3306
+        - name: mariadb-galera1
+          protocol: TCP
+          port: 4444
+          targetPort: 4444
+        - name: mariadb-galera2
+          protocol: TCP
+          port: 4567
+          targetPort: 4567
+        - name: mariadb-galera3
+          protocol: TCP
+          port: 4568
+          targetPort: 4568
 
 - name: create mariadb connecting pod
   kubernetes.core.k8s:
