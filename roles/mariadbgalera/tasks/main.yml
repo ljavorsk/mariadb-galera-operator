@@ -1,13 +1,18 @@
 ---
 # tasks file for MariadbGalera
+
+
 - name: create mariadb initial pod
   kubernetes.core.k8s:
     state: present
-    generate_name: pod-
+    name: '{{ ansible_operator_meta.name }}-init'
+    namespace: '{{ ansible_operator_meta.namespace }}'
     definition:
       apiVersion: v1
       kind: Pod
       spec:
+        selector:
+          app: mariadbgalera
         containers:
         - env:
           - name: GALERA_INIT
@@ -17,17 +22,77 @@
             value: pass
           - name: MYSQL_USER
             value: user
-            image: "quay.io/ljavorsk/mariadb-galera-init"
-            ports:
-            - containerPort: 3306
-              protocol: TCP
-            - containerPort: 4444
-              protocol: TCP
-            - containerPort: 4567
-              protocol: TCP
-            - containerPort: 4568
-              protocol: TCP
+          name: mariadbgalera-init
+          image: "quay.io/ljavorsk/mariadb-galera-init"
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          - containerPort: 4444
+            protocol: TCP
+          - containerPort: 4567
+            protocol: TCP
+          - containerPort: 4568
+            protocol: TCP
+    wait: yes
     wait_timeout: 3000
     wait_condition:
-      type: Successful
+      type: Ready
       status: "True"
+#  register: testregister
+
+#- debug:
+#    var: testregister
+
+- name: Create a Service object for MariadbGalera Pod
+  kubernetes.core.k8s_service:
+    state: present
+    name: '{{ ansible_operator_meta.name }}-service'
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    ports:
+    - name: mariadb-database
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+    - name: mariadb-galera1
+      protocol: TCP
+      port: 4444
+      targetPort: 4444
+    - name: mariadb-galera2
+      protocol: TCP
+      port: 4567
+      targetPort: 4567
+    - name: mariadb-galera3
+      protocol: TCP
+      port: 4568
+      targetPort: 4568
+    selector:
+      app: mariadbgalera
+
+- name: create mariadb connecting pod
+  kubernetes.core.k8s:
+    state: present
+    name: '{{ ansible_operator_meta.name }}-node'
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    definition:
+      apiVersion: v1
+      kind: Pod
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_DATABASE
+            value: db
+          - name: MYSQL_PASSWORD
+            value: pass
+          - name: MYSQL_USER
+            value: user
+          name: mariadbgalera-node
+          image: "quay.io/ljavorsk/mariadb-galera-init"
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          - containerPort: 4444
+            protocol: TCP
+          - containerPort: 4567
+            protocol: TCP
+          - containerPort: 4568
+            protocol: TCP
