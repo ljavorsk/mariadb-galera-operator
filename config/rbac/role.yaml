@@ -10,6 +10,7 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - services
       - secrets
       - pods
       - pods/exec
