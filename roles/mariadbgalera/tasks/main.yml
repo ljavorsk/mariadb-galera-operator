@@ -1,7 +1,7 @@
 ---
 # tasks file for MariadbGalera
 
-- name: Create a Service object for MariadbGalera init Pod
+- name: Create Service for MariadbGalera Init Pod
   kubernetes.core.k8s:
     state: present
     definition:
@@ -34,7 +34,7 @@
           targetPort: 4568
 
 
-- name: create mariadb initial pod
+- name: Create MariadbGalera Init Pod
   kubernetes.core.k8s:
     state: present
     definition:
@@ -81,12 +81,12 @@
   register: servicereg
 
 # Debugging values
-- debug:
+#- debug:
 #    var: ansible_operator_meta
 #    var: servicereg.resources[0].spec
 #    var: podnode
 
-- name: create mariadb connecting pod
+- name: Create MariadbGalera Deployment for connecting nodes
   kubernetes.core.k8s:
     definition:
       kind: Deployment
@@ -119,6 +119,38 @@
               ports:
               - containerPort: 3306
                 protocol: TCP
+              - containerPort: 4444
+                protocol: TCP
+              - containerPort: 4567
+                protocol: TCP
+              - containerPort: 4568
+                protocol: TCP
+
+- name: Create Galera Arbitrator Deployment
+  kubernetes.core.k8s:
+    definition:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-garbd'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+      spec:
+        replicas: "{{garbdsize}}"
+        selector:
+          matchLabels:
+            app: garbd
+        template:
+          metadata:
+            labels:
+              app: garbd
+          spec:
+            containers:
+            - env:
+              - name: CLUSTERS_IP4
+                value: '{{ servicereg.resources[0].spec.clusterIP }}'
+              name: garbd-node
+              image: "quay.io/ljavorsk/garbd"
+              ports:
               - containerPort: 4444
                 protocol: TCP
               - containerPort: 4567

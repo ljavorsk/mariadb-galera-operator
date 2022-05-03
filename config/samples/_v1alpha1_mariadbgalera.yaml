@@ -5,3 +5,4 @@ metadata:
   namespace: mariadb-galera-operator-system
 spec:
   size: 3
+  garbdsize: 2
