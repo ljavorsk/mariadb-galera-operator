@@ -87,37 +87,45 @@
 #    var: servicereg.resources[0].spec
 #    var: podnode
 
-
 - name: create mariadb connecting pod
   kubernetes.core.k8s:
-    state: present
-    name: '{{ ansible_operator_meta.name }}-node'
-    namespace: '{{ ansible_operator_meta.namespace }}'
     definition:
-      apiVersion: v1
-      kind: Pod
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-node'
+        namespace: '{{ ansible_operator_meta.namespace }}'
       spec:
-        containers:
-        - env:
-          - name: CLUSTERS_IP4
-            value: '{{ servicereg.resources[0].spec.clusterIP }}'
-          - name: MYSQL_DATABASE
-            value: db
-          - name: MYSQL_PASSWORD
-            value: pass
-          - name: MYSQL_USER
-            value: user
-          name: mariadbgalera-node
-          image: "quay.io/ljavorsk/mariadb-galera-init"
-          ports:
-          - containerPort: 3306
-            protocol: TCP
-          - containerPort: 4444
-            protocol: TCP
-          - containerPort: 4567
-            protocol: TCP
-          - containerPort: 4568
-            protocol: TCP
+        replicas: "{{size}}"
+        selector:
+          matchLabels:
+            app: mariadbgalera
+        template:
+          metadata:
+            labels:
+              app: mariadbgalera
+          spec:
+            containers:
+            - env:
+              - name: CLUSTERS_IP4
+                value: '{{ servicereg.resources[0].spec.clusterIP }}'
+              - name: MYSQL_DATABASE
+                value: db
+              - name: MYSQL_PASSWORD
+                value: pass
+              - name: MYSQL_USER
+                value: user
+              name: mariadbgalera-node
+              image: "quay.io/ljavorsk/mariadb-galera-init"
+              ports:
+              - containerPort: 3306
+                protocol: TCP
+              - containerPort: 4444
+                protocol: TCP
+              - containerPort: 4567
+                protocol: TCP
+              - containerPort: 4568
+                protocol: TCP
 
 
 #- name: Get a list of all pods from my namespace
