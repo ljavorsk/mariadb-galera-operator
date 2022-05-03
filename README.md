@@ -5,19 +5,27 @@ Bachelor thesis in the BUT FIT.
 xjavor20@stud.fit.vutbr.cz  
 
 ## Abstract
-Ansible-based Kubernetes/OpenShift operator, designed to deploy and watch the user-defined number of MariaDB Server Pods.
-User can define number of Pods in the CRD manifest ``config/samples/_v1alpha1_mariadbgalera.yaml``.
+Ansible-based Kubernetes/OpenShift operator, designed to deploy and watch the user-defined MariaDB Server and Galera Arbitrator Pods.
+Users can define the number of Pods in the CRD manifest ``config/samples/_v1alpha1_mariadbgalera.yaml``.
 
 The operator handles the correct Galera cluster connections between the deployed Pods using the Services to make it more Kubernetes and elegant way.
 
 ## Application
 ### How to run it?
+#### Starting the operator ####
 You need to have an OpenShift/Kubernetes cluster running and connected. For example, in a local enviroment, you can create a cluster using the ``minikube`` tool.
 
 When the cluster is ready and connected, just execute ``make deploy`` which deploys the operator to the cluster.
-The last step is to create the CRD which the operator uses. Thiscan be done by ``oc apply -f config/samples/_v1alpha1_mariadbgalera.yaml`` in the root directory of this repository.
+The last step is to create the CRD, which the operator watches and uses as a reference when it comes to managing resources in the cluster. This can be done by executing ``oc apply -f config/samples/_v1alpha1_mariadbgalera.yaml`` in the root directory of this repository.
 
 The operator can be running localy as well. This can be achieved executing ``make install run`` command. Operator than uses the ``~/.kube/config`` configuration file to communicate with the cluster, so it has to be configured before.
+
+#### Defining the desired state of the application ####
+The desired state of the application is defined in the watched CRD. This CRD can be created from the sample located in ``config/samples/_v1alpha1_mariadbgalera.yaml`` file.  
+Administrator can edit the number of desired nodes in the cluster by editing the **size** variable.  
+Also the number of Galera Arbitrator instances can be defined in the CRD editing the **garbdsize** variable.
+
+Imidiatelly after something change in the CRD, the operator picks up the changes and manage the resources in the cluster until the cluster matches the desired state.
 
 ### Used applications versions
 The operator was tested and ran with these versions of used applications:
