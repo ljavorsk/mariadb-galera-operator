@@ -39,9 +39,7 @@
       status: "True"
 #  register: testregister
 
-- debug:
-    var: ansible_operator_meta
-#    var: testregister
+
 - name: Create a Service object for MariadbGalera Pod
   kubernetes.core.k8s:
     state: present
@@ -49,7 +47,7 @@
       apiVersion: v1
       kind: Service
       metadata:
-        name: '{{ ansible_operator_meta.name }}-service'
+        name: '{{ ansible_operator_meta.name }}-main-service'
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
           app: mariadbgalera
@@ -76,6 +74,20 @@
           port: 4568
           targetPort: 4568
 
+- name: Get info on the service
+  kubernetes.core.k8s_info:
+    kind: Service
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    name: '{{ ansible_operator_meta.name }}-main-service' 
+  register: servicereg
+
+# Debugging values
+- debug:
+#    var: ansible_operator_meta
+#    var: servicereg.resources[0].spec
+#    var: podnode
+
+
 - name: create mariadb connecting pod
   kubernetes.core.k8s:
     state: present
@@ -87,6 +99,8 @@
       spec:
         containers:
         - env:
+          - name: CLUSTERS_IP4
+            value: '{{ servicereg.resources[0].spec.clusterIP }}'
           - name: MYSQL_DATABASE
             value: db
           - name: MYSQL_PASSWORD
@@ -104,3 +118,11 @@
             protocol: TCP
           - containerPort: 4568
             protocol: TCP
+
+
+#- name: Get a list of all pods from my namespace
+#  kubernetes.core.k8s_info:
+#    kind: Pod
+#    namespace: '{{ ansible_operator_meta.namespace }}'
+#  register: podnode
+
