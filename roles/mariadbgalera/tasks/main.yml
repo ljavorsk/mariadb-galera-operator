@@ -12,11 +12,9 @@
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
           app: mariadbgalerainitnode
-          service: mariadbgalera-service
       spec:
         selector:
           app: mariadbgalerainitnode
-          service: mariadbgalera-service
         ports:
         - name: mariadb-database
           protocol: TCP
@@ -39,14 +37,15 @@
 - name: create mariadb initial pod
   kubernetes.core.k8s:
     state: present
-    name: '{{ ansible_operator_meta.name }}-init'
-    namespace: '{{ ansible_operator_meta.namespace }}'
     definition:
       apiVersion: v1
       kind: Pod
-      spec:
-        label:
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-init'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+        labels:
           app: mariadbgalerainitnode
+      spec:
         containers:
         - env:
           - name: GALERA_INIT
