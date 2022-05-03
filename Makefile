@@ -75,10 +75,14 @@ help: ## Display this help.
 
 ##@ Custom building and deploying
 
+.PHONY: redeploy
+redeploy: undeploy initialize
+
 # This builds the operator and deploys it automatically, also it adds the CRD to the cluster when operator is deployed
 .PHONY: initialize
 initialize: docker-build docker-push deploy
 	kubectl apply -f config/samples/_v1alpha1_mariadbgalera.yaml
+
 ##@ Build
 
 .PHONY: run
