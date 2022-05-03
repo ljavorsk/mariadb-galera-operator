@@ -2,5 +2,6 @@ apiVersion: ljavorsk-mariadb-operator.com/v1alpha1
 kind: MariadbGalera
 metadata:
   name: mariadbgalera-sample
+  namespace: mariadb-galera-operator-system
 spec:
   size: 1
