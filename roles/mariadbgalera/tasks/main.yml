@@ -32,7 +32,7 @@
         name: '{{ ansible_operator_meta.name }}-init'
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
-          app: mariadbgalerainitnode
+          app: mariadbgalera
       spec:
         containers:
         - env:
@@ -59,20 +59,15 @@
     wait_condition:
       type: Ready
       status: "True"
-#  register: testregister
 
-- name: Get info on the service
+- name: Store info from all MariaDB Pods
   kubernetes.core.k8s_info:
-    kind: Service
+    kind: Pod
     namespace: '{{ ansible_operator_meta.namespace }}'
-    name: '{{ ansible_operator_meta.name }}-main-service' 
-  register: servicereg
+    label_selectors:
+      - app = mariadbgalera
+  register: nodesregister
 
-# Debugging values
-#- debug:
-#    var: ansible_operator_meta
-#    var: servicereg.resources[0].spec
-#    var: podnode
 
 - name: Create MariadbGalera Deployment for connecting nodes
   kubernetes.core.k8s:
@@ -95,7 +90,7 @@
             containers:
             - env:
               - name: CLUSTERS_IP4
-                value: '{{ servicereg.resources[0].spec.clusterIP }}'
+                value: '{{ nodesregister.resources[0].status.podIP }}'
               - name: MYSQL_DATABASE
                 value: db
               - name: MYSQL_PASSWORD
@@ -135,7 +130,7 @@
             containers:
             - env:
               - name: CLUSTERS_IP4
-                value: '{{ servicereg.resources[0].spec.clusterIP }}'
+                value: '{{ nodesregister.resources[0].status.podIP }}'
               name: garbd-node
               image: "quay.io/ljavorsk/garbd"
               ports:
@@ -145,11 +140,4 @@
                 protocol: TCP
               - containerPort: 4568
                 protocol: TCP
-
-
-#- name: Get a list of all pods from my namespace
-#  kubernetes.core.k8s_info:
-#    kind: Pod
-#    namespace: '{{ ansible_operator_meta.namespace }}'
-#  register: podnode
 
