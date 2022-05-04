@@ -1,37 +1,25 @@
 ---
 # tasks file for MariadbGalera
 
-- name: Create Service for MariadbGalera Init Pod
+- name: Create Service for all MariadbGalera Pods
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: v1
       kind: Service
       metadata:
-        name: '{{ ansible_operator_meta.name }}-main-service'
+        name: '{{ ansible_operator_meta.name }}-service'
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
-          app: mariadbgalerainitnode
+          app: mariadbgalera
       spec:
         selector:
-          app: mariadbgalerainitnode
+          app: mariadbgalera
         ports:
         - name: mariadb-database
           protocol: TCP
           port: 3306
           targetPort: 3306
-        - name: mariadb-galera1
-          protocol: TCP
-          port: 4444
-          targetPort: 4444
-        - name: mariadb-galera2
-          protocol: TCP
-          port: 4567
-          targetPort: 4567
-        - name: mariadb-galera3
-          protocol: TCP
-          port: 4568
-          targetPort: 4568
 
 
 - name: Create MariadbGalera Init Pod
