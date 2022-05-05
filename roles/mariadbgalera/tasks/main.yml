@@ -129,6 +129,71 @@
                     - ls
                     - /var/lib/mysql/mysql.sock
 
+##### Idea behind Main Pod fail-over strategy #####
+#- name: Store info from Init MariaDB Pod
+#  kubernetes.core.k8s_info:
+#    kind: Pod
+#    name: '{{ ansible_operator_meta.name }}-init'
+#    namespace: '{{ ansible_operator_meta.namespace }}'
+#    label_selectors:
+#      - app = mariadbgalera
+#  register: initpodregister
+
+
+#- name: Store info from all MariaDB Pods
+#  kubernetes.core.k8s_info:
+#    kind: Pod
+#    namespace: '{{ ansible_operator_meta.namespace }}'
+#    label_selectors:
+#      - app = mariadbgalera
+#  register: nodesregister
+
+#- name: Retrieve Configmap
+#  kubernetes.core.k8s_info:
+#    kind: ConfigMap
+#    name: '{{ ansible_operator_meta.name }}-configmap'
+#    namespace: '{{ ansible_operator_meta.namespace }}'
+#  register: configmap
+
+#- name: Create ConfigMap for the init Pod
+#  kubernetes.core.k8s:
+#    definition:
+#      apiVersion: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: '{{ ansible_operator_meta.name }}-configmap'
+#        namespace: '{{ ansible_operator_meta.namespace }}'
+#      data:
+#        name: GALERA_INIT
+#        value:
+#  when: configmap.resources|length == 0
+
+#- debug:
+#    var: configmap
+
+#- name: Update ConfigMap for the init Pod after the cluster is already running
+#  kubernetes.core.k8s:
+#    definition:
+#      apiVersion: v1
+#      kind: ConfigMap
+#      metadata:
+#        name: '{{ ansible_operator_meta.name }}-configmap'
+#        namespace: '{{ ansible_operator_meta.namespace }}'
+#      data:
+#        name: CLUSTERS_IP4
+#        value: '{{ servicereg.resources[0].status.podIP }}'
+#  when: initpodregister.resources|length > 0 and (nodesregister.resources|length) > 2 and configmap.resources|length > 0
+
+#- name: Retrieve Configmap
+#  kubernetes.core.k8s_info:
+#    kind: ConfigMap
+#    name: '{{ ansible_operator_meta.name }}-configmap'
+#    namespace: '{{ ansible_operator_meta.namespace }}'
+#  register: configmap
+
+#- debug:
+#    var: configmap
+#############################################################
 
 - name: Create Galera Arbitrator Deployment
   kubernetes.core.k8s:
