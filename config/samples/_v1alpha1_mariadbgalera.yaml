@@ -4,5 +4,5 @@ metadata:
   name: mariadbgalera-sample
   namespace: mariadb-galera-operator-system
 spec:
-  size: 3
-  garbdsize: 2
+  size: 2
+  garbdsize: 0
