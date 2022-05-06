@@ -1,20 +1,17 @@
----
-# tasks file for MariadbGalera
-
-- name: Create Service for all MariadbGalera Pods
+- name: Create Service for all MariadbGalera connections
   kubernetes.core.k8s:
     state: present
     definition:
       apiVersion: v1
       kind: Service
       metadata:
-        name: '{{ ansible_operator_meta.name }}-service'
+        name: '{{ ansible_operator_meta.name }}-connection-service'
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
-          app: mariadbgalerainit
+          app: '{{ ansible_operator_meta.name }}-connection-service'
       spec:
         selector:
-          app: mariadbgalerainit
+          app: '{{ ansible_operator_meta.name }}-connection-service'
         ports:
         - name: mariadb-database
           protocol: TCP
@@ -32,7 +29,6 @@
           protocol: TCP
           targetPort: 4568
 
-
 - name: Create MariadbGalera Init Pod
   kubernetes.core.k8s:
     state: present
@@ -43,7 +39,7 @@
         name: '{{ ansible_operator_meta.name }}-init'
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
-          app: mariadbgalerainit
+          app: '{{ ansible_operator_meta.name }}-connection-service'
       spec:
         containers:
         - env:
@@ -76,7 +72,7 @@
   kubernetes.core.k8s_info:
     kind: Service
     namespace: '{{ ansible_operator_meta.namespace }}'
-    name: '{{ ansible_operator_meta.name }}-service' 
+    name: '{{ ansible_operator_meta.name }}-connection-service'
   register: servicereg
 
 - debug:
@@ -88,17 +84,17 @@
       kind: Deployment
       apiVersion: apps/v1
       metadata:
-        name: node
+        name: '{{ ansible_operator_meta.name }}-node'
         namespace: '{{ ansible_operator_meta.namespace }}'
       spec:
         replicas: "{{size}}"
         selector:
           matchLabels:
-            app: mariadbgalera
+            app: '{{ ansible_operator_meta.name }}-connection-service'
         template:
           metadata:
             labels:
-              app: mariadbgalera
+              app: '{{ ansible_operator_meta.name }}-connection-service'
           spec:
             containers:
             - env:
@@ -121,13 +117,14 @@
                 protocol: TCP
               - containerPort: 4568
                 protocol: TCP
-              readynessProbe:
-                initialDelaySeconds: 5
+              readinessProbe:
+                initialDelaySeconds: 10
                 periodSeconds: 5
                 exec:
                   command:
                     - ls
                     - /var/lib/mysql/mysql.sock
+
 
 ##### Idea behind Main Pod fail-over strategy #####
 #- name: Store info from Init MariaDB Pod
