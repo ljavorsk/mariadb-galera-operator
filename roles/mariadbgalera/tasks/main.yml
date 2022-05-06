@@ -8,10 +8,10 @@
         name: '{{ ansible_operator_meta.name }}-connection-service'
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
-          app: '{{ ansible_operator_meta.name }}-connection-service'
+          app: mariadbgalera
       spec:
         selector:
-          app: '{{ ansible_operator_meta.name }}-connection-service'
+          app: mariadbgalera
         ports:
         - name: mariadb-database
           protocol: TCP
@@ -29,6 +29,14 @@
           protocol: TCP
           targetPort: 4568
 
+- name: Retrieve Configmap
+  kubernetes.core.k8s_info:
+    kind: ConfigMap
+    name: '{{ ansible_operator_meta.name }}-configmap'
+    namespace: '{{ ansible_operator_meta.namespace }}'
+  register: configmap
+
+
 - name: Create MariadbGalera Init Pod
   kubernetes.core.k8s:
     state: present
@@ -39,7 +47,7 @@
         name: '{{ ansible_operator_meta.name }}-init'
         namespace: '{{ ansible_operator_meta.namespace }}'
         labels:
-          app: '{{ ansible_operator_meta.name }}-connection-service'
+          app: mariadbgalera
       spec:
         containers:
         - env:
@@ -66,6 +74,7 @@
     wait_condition:
       type: Ready
       status: "True"
+  when: configmap.resources|length == 0
 
 
 - name: Get info on the service
@@ -75,8 +84,6 @@
     name: '{{ ansible_operator_meta.name }}-connection-service'
   register: servicereg
 
-- debug:
-    var: servicereg.resources[0].spec.clusterIP
 
 - name: Create MariadbGalera Deployment for connecting nodes
   kubernetes.core.k8s:
@@ -90,11 +97,11 @@
         replicas: "{{size}}"
         selector:
           matchLabels:
-            app: '{{ ansible_operator_meta.name }}-connection-service'
+            app: mariadbgalera
         template:
           metadata:
             labels:
-              app: '{{ ansible_operator_meta.name }}-connection-service'
+              app: mariadbgalera
           spec:
             containers:
             - env:
@@ -118,7 +125,7 @@
               - containerPort: 4568
                 protocol: TCP
               readinessProbe:
-                initialDelaySeconds: 10
+                initialDelaySeconds: 12
                 periodSeconds: 5
                 exec:
                   command:
@@ -126,71 +133,56 @@
                     - /var/lib/mysql/mysql.sock
 
 
-##### Idea behind Main Pod fail-over strategy #####
-#- name: Store info from Init MariaDB Pod
-#  kubernetes.core.k8s_info:
-#    kind: Pod
-#    name: '{{ ansible_operator_meta.name }}-init'
-#    namespace: '{{ ansible_operator_meta.namespace }}'
-#    label_selectors:
-#      - app = mariadbgalera
-#  register: initpodregister
+#########################################################
+# When Galera cluster has been initialize,
+# and has at least one Node connected to it
+# without the Init Pod, the Init Pod can be deleted.
+# It has done it's job.
+
+- name: Get info on the service
+  kubernetes.core.k8s_info:
+    kind: Service
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    name: '{{ ansible_operator_meta.name }}-connection-service'
+  register: servicereg
 
 
-#- name: Store info from all MariaDB Pods
-#  kubernetes.core.k8s_info:
-#    kind: Pod
-#    namespace: '{{ ansible_operator_meta.namespace }}'
-#    label_selectors:
-#      - app = mariadbgalera
-#  register: nodesregister
+- name: Get info on MariaDB Pods
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    label_selectors:
+      - app = mariadbgalera
+  register: nodesregister
 
-#- name: Retrieve Configmap
-#  kubernetes.core.k8s_info:
-#    kind: ConfigMap
-#    name: '{{ ansible_operator_meta.name }}-configmap'
-#    namespace: '{{ ansible_operator_meta.namespace }}'
-#  register: configmap
 
-#- name: Create ConfigMap for the init Pod
-#  kubernetes.core.k8s:
-#    definition:
-#      apiVersion: v1
-#      kind: ConfigMap
-#      metadata:
-#        name: '{{ ansible_operator_meta.name }}-configmap'
-#        namespace: '{{ ansible_operator_meta.namespace }}'
-#      data:
-#        name: GALERA_INIT
-#        value:
-#  when: configmap.resources|length == 0
+- name: Galera has been initialized and nodes are connected
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-configmap'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+      data:
+  when: configmap.resources|length == 0
 
-#- debug:
-#    var: configmap
+- name: Delete the Init Pod
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-init'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+  when:
+    - configmap.resources|length > 0
+    - nodesregister.resources[0].status.containerStatuses[0].ready == true
+    - nodesregister.resources[1].status.containerStatuses[0].ready == true
 
-#- name: Update ConfigMap for the init Pod after the cluster is already running
-#  kubernetes.core.k8s:
-#    definition:
-#      apiVersion: v1
-#      kind: ConfigMap
-#      metadata:
-#        name: '{{ ansible_operator_meta.name }}-configmap'
-#        namespace: '{{ ansible_operator_meta.namespace }}'
-#      data:
-#        name: CLUSTERS_IP4
-#        value: '{{ servicereg.resources[0].status.podIP }}'
-#  when: initpodregister.resources|length > 0 and (nodesregister.resources|length) > 2 and configmap.resources|length > 0
+########################################################
 
-#- name: Retrieve Configmap
-#  kubernetes.core.k8s_info:
-#    kind: ConfigMap
-#    name: '{{ ansible_operator_meta.name }}-configmap'
-#    namespace: '{{ ansible_operator_meta.namespace }}'
-#  register: configmap
-
-#- debug:
-#    var: configmap
-#############################################################
 
 - name: Create Galera Arbitrator Deployment
   kubernetes.core.k8s:
