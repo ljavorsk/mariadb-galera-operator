@@ -1,3 +1,4 @@
 ---
 # defaults file for MariadbGalera
-size: 1
+size: 3
+garbdsize: 1

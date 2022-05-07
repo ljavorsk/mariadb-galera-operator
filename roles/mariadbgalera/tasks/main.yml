@@ -1,13 +1,97 @@
----
-# tasks file for MariadbGalera
+- name: Create Service for all MariadbGalera connections
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-connection-service'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+        labels:
+          app: mariadbgalera
+      spec:
+        selector:
+          app: mariadbgalera
+        ports:
+        - name: mariadb-database
+          protocol: TCP
+          port: 3306
+        - name: 4444-tcp
+          port: 4444
+          protocol: TCP
+          targetPort: 4444
+        - name: 4567-tcp
+          port: 4567
+          protocol: TCP
+          targetPort: 4567
+        - name: 4568-tcp
+          port: 4568
+          protocol: TCP
+          targetPort: 4568
 
-- name: start mariadbgalera
+- name: Retrieve Configmap
+  kubernetes.core.k8s_info:
+    kind: ConfigMap
+    name: '{{ ansible_operator_meta.name }}-configmap'
+    namespace: '{{ ansible_operator_meta.namespace }}'
+  register: configmap
+
+
+- name: Create MariadbGalera Init Pod
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-init'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+        labels:
+          app: mariadbgalera
+      spec:
+        containers:
+        - env:
+          - name: GALERA_INIT
+          - name: MYSQL_DATABASE
+            value: db
+          - name: MYSQL_PASSWORD
+            value: pass
+          - name: MYSQL_USER
+            value: user
+          name: mariadbgalera-init
+          image: "quay.io/ljavorsk/mariadb-galera"
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          - containerPort: 4444
+            protocol: TCP
+          - containerPort: 4567
+            protocol: TCP
+          - containerPort: 4568
+            protocol: TCP
+    wait: yes
+    wait_timeout: 3000
+    wait_condition:
+      type: Ready
+      status: "True"
+  when: configmap.resources|length == 0
+
+
+- name: Get info on the service
+  kubernetes.core.k8s_info:
+    kind: Service
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    name: '{{ ansible_operator_meta.name }}-connection-service'
+  register: servicereg
+
+
+- name: Create MariadbGalera Deployment for connecting nodes
   kubernetes.core.k8s:
     definition:
       kind: Deployment
       apiVersion: apps/v1
       metadata:
-        name: '{{ ansible_operator_meta.name }}-mariadbgalera'
+        name: '{{ ansible_operator_meta.name }}-node'
         namespace: '{{ ansible_operator_meta.namespace }}'
       spec:
         replicas: "{{size}}"
@@ -21,21 +105,124 @@
           spec:
             containers:
             - env:
-              - name: GALERA_INIT
+              - name: CLUSTERS_IP4
+                value: '{{ servicereg.resources[0].spec.clusterIP }}'
               - name: MYSQL_DATABASE
                 value: db
               - name: MYSQL_PASSWORD
                 value: pass
               - name: MYSQL_USER
                 value: user
-              name: mariadbgalera
-              image: "quay.io/ljavorsk/mariadb-galera-init"
+              name: mariadbgalera-node
+              image: "quay.io/ljavorsk/mariadb-galera"
               ports:
-                - containerPort: 3306
-                  protocol: TCP
-                - containerPort: 4444
-                  protocol: TCP
-                - containerPort: 4567
-                  protocol: TCP
-                - containerPort: 4568
-                  protocol: TCP
+              - containerPort: 3306
+                protocol: TCP
+              - containerPort: 4444
+                protocol: TCP
+              - containerPort: 4567
+                protocol: TCP
+              - containerPort: 4568
+                protocol: TCP
+              readinessProbe:
+                initialDelaySeconds: 5
+                periodSeconds: 5
+                exec:
+                  command:
+                    - /bin/sh
+                  args:
+                    - /check-galera-connection.sh 1
+              livenessProbe:
+                initialDelaySeconds: 20
+                periodSeconds: 5
+                exec:
+                  command:
+                    - /bin/sh
+                  args:
+                    - /check-galera-connection.sh 1
+
+#########################################################
+# When Galera cluster has been initialize,
+# and has at least one Node connected to it
+# without the Init Pod, the Init Pod can be deleted.
+# It has done it's job.
+
+- name: Get info on the service
+  kubernetes.core.k8s_info:
+    kind: Service
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    name: '{{ ansible_operator_meta.name }}-connection-service'
+  register: servicereg
+
+
+- name: Get info on MariaDB Pods
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: '{{ ansible_operator_meta.namespace }}'
+    label_selectors:
+      - app = mariadbgalera
+  register: nodesregister
+
+
+- name: Galera has been initialized and nodes are connected
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-configmap'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+      data:
+  when: configmap.resources|length == 0
+
+- name: Delete the Init Pod
+  kubernetes.core.k8s:
+    state: absent
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-init'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+  when:
+    - configmap.resources|length > 0
+    - nodesregister.resources[0].status.containerStatuses[0].ready == true
+    - nodesregister.resources[1].status.containerStatuses[0].ready == true
+
+########################################################
+
+
+- name: Create Galera Arbitrator Deployment
+  kubernetes.core.k8s:
+    definition:
+      kind: Deployment
+      apiVersion: apps/v1
+      metadata:
+        name: '{{ ansible_operator_meta.name }}-garbd'
+        namespace: '{{ ansible_operator_meta.namespace }}'
+      spec:
+        replicas: "{{garbdsize}}"
+        selector:
+          matchLabels:
+            app: garbd
+        template:
+          metadata:
+            labels:
+              app: garbd
+          spec:
+            containers:
+            - env:
+              - name: CLUSTERS_IP4
+                value: '{{ servicereg.resources[0].spec.clusterIP }}'
+              name: garbd-node
+              image: "quay.io/ljavorsk/garbd"
+              ports:
+              - containerPort: 3306
+                protocol: TCP
+              - containerPort: 4444
+                protocol: TCP
+              - containerPort: 4567
+                protocol: TCP
+              - containerPort: 4568
+                protocol: TCP
+
