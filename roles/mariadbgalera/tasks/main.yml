@@ -59,7 +59,7 @@
           - name: MYSQL_USER
             value: user
           name: mariadbgalera-init
-          image: "quay.io/ljavorsk/mariadb-galera-init"
+          image: "quay.io/ljavorsk/mariadb-galera"
           ports:
           - containerPort: 3306
             protocol: TCP
@@ -114,7 +114,7 @@
               - name: MYSQL_USER
                 value: user
               name: mariadbgalera-node
-              image: "quay.io/ljavorsk/mariadb-galera-init"
+              image: "quay.io/ljavorsk/mariadb-galera"
               ports:
               - containerPort: 3306
                 protocol: TCP
@@ -125,13 +125,13 @@
               - containerPort: 4568
                 protocol: TCP
               readinessProbe:
-                initialDelaySeconds: 12
+                initialDelaySeconds: 5
                 periodSeconds: 5
                 exec:
                   command:
-                    - ls
-                    - /var/lib/mysql/mysql.sock
-
+                    - /bin/sh
+                  args:
+                    - /check-galera-connection.sh 1
 
 #########################################################
 # When Galera cluster has been initialize,
