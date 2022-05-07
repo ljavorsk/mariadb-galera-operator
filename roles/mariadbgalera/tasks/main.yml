@@ -132,6 +132,14 @@
                     - /bin/sh
                   args:
                     - /check-galera-connection.sh 1
+              livenessProbe:
+                initialDelaySeconds: 20
+                periodSeconds: 5
+                exec:
+                  command:
+                    - /bin/sh
+                  args:
+                    - /check-galera-connection.sh 1
 
 #########################################################
 # When Galera cluster has been initialize,
