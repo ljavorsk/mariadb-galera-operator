@@ -1,5 +1,5 @@
 # MariaDB Galera OpenShift operator
-Bachelor thesis in the BUT FIT.
+Bachelor thesis for the Faculty of Information Technology in Brno University of Technology.
 
 ## Authors: 
 xjavor20@stud.fit.vutbr.cz  
