@@ -142,9 +142,9 @@
                     - /check-galera-connection.sh 1
 
 #########################################################
-# When Galera cluster has been initialize,
+# When Galera cluster has been initialized,
 # and has at least one Node connected to it
-# without the Init Pod, the Init Pod can be deleted.
+# apart from the Init Pod, the Init Pod can be deleted.
 # It has done it's job.
 
 - name: Get info on the service
@@ -155,7 +155,7 @@
   register: servicereg
 
 
-- name: Get info on MariaDB Pods
+- name: Get info on all MariaDB Pods
   kubernetes.core.k8s_info:
     kind: Pod
     namespace: '{{ ansible_operator_meta.namespace }}'
@@ -175,7 +175,7 @@
       data:
   when: configmap.resources|length == 0
 
-- name: Delete the Init Pod
+- name: Remove the Init Pod
   kubernetes.core.k8s:
     state: absent
     definition:
