@@ -1,7 +1,7 @@
 # MariaDB Galera OpenShift operator
 Bachelor thesis for the Faculty of Information Technology in Brno University of Technology.
 
-## Authors: 
+## Author: 
 xjavor20@stud.fit.vutbr.cz  
 
 ## Abstract
@@ -42,3 +42,8 @@ The operator was tested and ran with these versions of used applications:
 **Minikube**
 
 Version: v1.25.2
+
+## Licensing:
+This code is licensed under MIT license.  
+License information can be found in the LICENSE file. 
+
