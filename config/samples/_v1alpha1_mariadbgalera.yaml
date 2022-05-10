@@ -1,3 +1,6 @@
+# Author: Lukas Javorsky (xjavor20@fit.vutbr.cz)
+# File: config/samples/_v1alpha1_mariadbgalera.yaml
+
 apiVersion: ljavorsk-mariadb-operator.com/v1alpha1
 kind: MariadbGalera
 metadata:

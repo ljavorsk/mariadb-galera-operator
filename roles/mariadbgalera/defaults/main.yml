@@ -1,4 +1,6 @@
+# Author: Lukas Javorsky (xjavor20@fit.vutbr.cz)
+# File: roles/mariadbgalera/defaults/main.yml
+# Defaults file for MariadbGalera
 ---
-# defaults file for MariadbGalera
 size: 5
 garbdsize: 2

@@ -1,3 +1,6 @@
+# Author: Lukas Javorsky (xjavor20@fit.vutbr.cz)
+# File: roles/mariadbgalera/tasks/main.yml
+
 - name: Create Service for all MariadbGalera connections
   kubernetes.core.k8s:
     state: present
